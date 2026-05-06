@@ -12,9 +12,7 @@ function getLocalDateString() {
 
 function normalizarData(dataStr) {
   if (!dataStr) return '';
-  // Se já estiver no formato YYYY-MM-DD, retorna direto
   if (/^\d{4}-\d{2}-\d{2}$/.test(dataStr)) return dataStr;
-  // Tenta parsear a data tratando como local
   const parts = dataStr.split('T')[0].split('-');
   if (parts.length === 3) {
     return `${parts[0]}-${parts[1].padStart(2,'0')}-${parts[2].padStart(2,'0')}`;
@@ -22,43 +20,18 @@ function normalizarData(dataStr) {
   return dataStr;
 }
 
-function migrarDatas() {
-  const records = Storage.getRecords();
-  let mudou = false;
-  records.forEach(r => {
-    if (!r.data) return;
-    // Se a data tem formato ISO (com T), converte para local
-    if (r.data.includes('T')) {
-      const d = new Date(r.data);
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      r.data = `${year}-${month}-${day}`;
-      mudou = true;
-    }
-  });
-  if (mudou) {
-    localStorage.setItem(Storage.KEYS.RECORDS, JSON.stringify(records));
-    showToast('Datas dos registros antigos foram corrigidas!', 'success');
-  }
-}
-
-function initApp() {
-  migrarDatas(); // Corrige datas antigas
+async function initApp() {
   setupNavigation();
   setupTheme();
   setupForm();
   setupConfig();
-  updateDashboard();
-  loadHistorico();
-  // agendarEnvioPDF(); // Temporariamente desativado para teste
+  await updateDashboard();
+  await loadHistorico();
   
-  // Set current date and time using local time
   const now = new Date();
   document.getElementById('data').value = getLocalDateString();
   document.getElementById('horario').value = now.toTimeString().slice(0, 5);
   
-  // Registra Service Worker para PWA
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('service-worker.js')
       .then(() => console.log('Service Worker registrado'))
@@ -73,7 +46,7 @@ function setupNavigation() {
   const sidebar = document.getElementById('sidebar');
 
   navItems.forEach(item => {
-    item.addEventListener('click', (e) => {
+    item.addEventListener('click', async (e) => {
       e.preventDefault();
       const targetPage = item.dataset.page;
       
@@ -87,6 +60,9 @@ function setupNavigation() {
         item.querySelector('span').textContent;
       
       sidebar.classList.remove('open');
+
+      if (targetPage === 'dashboard') await updateDashboard();
+      if (targetPage === 'historico') await loadHistorico();
     });
   });
 
@@ -128,7 +104,7 @@ function setTheme(theme) {
 function setupForm() {
   const form = document.getElementById('cadastroForm');
   
-  form.addEventListener('submit', (e) => {
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
     
     const residuos = Array.from(form.querySelectorAll('input[name="residuo"]:checked'))
@@ -150,24 +126,27 @@ function setupForm() {
       observacao: document.getElementById('observacao').value
     };
     
-    // Garante que a data seja salva no formato local YYYY-MM-DD
     record.data = getLocalDateString();
-    Storage.saveRecord(record);
-    showToast('Registro salvo com sucesso!', 'success');
     
-    form.reset();
-    const now = new Date();
-    document.getElementById('data').value = now.toISOString().slice(0, 10);
-    document.getElementById('horario').value = now.toTimeString().slice(0, 5);
-    
-    updateDashboard();
-    loadHistorico();
-    navigateTo('dashboard');
+    const result = await Storage.saveRecord(record);
+    if (result) {
+      showToast('Registro salvo com sucesso!', 'success');
+      form.reset();
+      const now = new Date();
+      document.getElementById('data').value = getLocalDateString();
+      document.getElementById('horario').value = now.toTimeString().slice(0, 5);
+      
+      await updateDashboard();
+      await loadHistorico();
+      navigateTo('dashboard');
+    } else {
+      showToast('Erro ao salvar registro.', 'error');
+    }
   });
 }
 
-function updateDashboard() {
-  const records = Storage.getRecords();
+async function updateDashboard() {
+  const records = await Storage.getRecords();
   const hoje = getLocalDateString();
   const hojeRecords = records.filter(r => normalizarData(r.data) === hoje);
   
@@ -196,8 +175,8 @@ function updateDashboard() {
   }
 }
 
-function loadHistorico(filtered) {
-  const records = filtered || Storage.getRecords();
+async function loadHistorico(filtered) {
+  const records = filtered || await Storage.getRecords();
   const tbody = document.getElementById('historicoBody');
   
   if (records.length === 0) {
@@ -205,7 +184,7 @@ function loadHistorico(filtered) {
     return;
   }
   
-  tbody.innerHTML = records.reverse().map(r => `
+  tbody.innerHTML = records.map(r => `
     <tr>
       <td>${normalizarData(r.data)}</td>
       <td>${r.horario}</td>
@@ -216,7 +195,7 @@ function loadHistorico(filtered) {
       <td>${r.residuos.join(', ')}</td>
       <td>${r.observacao || '-'}</td>
       <td class="action-icons">
-        <button onclick="deletarRegistro('${r.id}')" class="delete" title="Excluir">
+        <button onclick="deletarRegistro(${r.id})" class="delete" title="Excluir">
           <i class="fas fa-trash"></i>
         </button>
       </td>
@@ -224,19 +203,19 @@ function loadHistorico(filtered) {
   `).join('');
 }
 
-function filtrarHistorico() {
+async function filtrarHistorico() {
   const placaFiltro = document.getElementById('filtroPlaca').value.toLowerCase();
   const dataFiltro = document.getElementById('filtroData').value;
   const veiculoFiltro = document.getElementById('filtroVeiculo').value;
   const residuoFiltro = document.getElementById('filtroResiduo').value;
   
-  let records = Storage.getRecords();
+  let records = await Storage.getRecords();
   
   if (placaFiltro) {
     records = records.filter(r => r.placa.toLowerCase().includes(placaFiltro));
   }
   if (dataFiltro) {
-    records = records.filter(r => r.data === dataFiltro);
+    records = records.filter(r => normalizarData(r.data) === dataFiltro);
   }
   if (veiculoFiltro) {
     records = records.filter(r => r.tipoVeiculo === veiculoFiltro);
@@ -245,7 +224,7 @@ function filtrarHistorico() {
     records = records.filter(r => r.residuos.includes(residuoFiltro));
   }
   
-  loadHistorico(records);
+  await loadHistorico(records);
 }
 
 function limparFiltros() {
@@ -256,53 +235,48 @@ function limparFiltros() {
   loadHistorico();
 }
 
-function deletarRegistro(id) {
+async function deletarRegistro(id) {
   if (confirm('Tem certeza que deseja excluir este registro?')) {
-    Storage.deleteRecord(id);
-    updateDashboard();
-    loadHistorico();
+    await Storage.deleteRecord(id);
+    await updateDashboard();
+    await loadHistorico();
     showToast('Registro excluído.', 'success');
   }
 }
 
-function setupConfig() {
-  // Configurações removidas - apenas tema é gerenciado via Storage
-}
+function setupConfig() {}
 
-function fazerBackup() {
-  Storage.exportJSON();
+async function fazerBackup() {
+  await Storage.exportJSON();
   showToast('Backup realizado com sucesso!', 'success');
 }
 
-function restaurarBackup(event) {
+async function restaurarBackup(event) {
   const file = event.target.files[0];
   if (!file) return;
   
-  Storage.importJSON(file)
-    .then(() => {
-      showToast('Backup restaurado com sucesso!', 'success');
-      updateDashboard();
-      loadHistorico();
-    })
-    .catch(() => {
-      showToast('Erro ao restaurar backup.', 'error');
-    });
+  try {
+    await Storage.importJSON(file);
+    showToast('Backup restaurado com sucesso!', 'success');
+    await updateDashboard();
+    await loadHistorico();
+  } catch (e) {
+    showToast('Erro ao restaurar backup.', 'error');
+  }
 }
 
-function limparDados() {
+async function limparDados() {
   if (confirm('Tem certeza? Isso apagará TODOS os registros permanentemente.')) {
-    Storage.clearAll();
-    updateDashboard();
-    loadHistorico();
+    await Storage.clearAll();
+    await updateDashboard();
+    await loadHistorico();
     showToast('Todos os dados foram apagados.', 'success');
   }
 }
 
-function gerarPDFExpediente() {
+async function gerarPDFExpediente() {
   const hoje = getLocalDateString();
-  const registros = Storage.getRecords().filter(r => {
-    return normalizarData(r.data) === hoje;
-  });
+  const registros = (await Storage.getRecords()).filter(r => normalizarData(r.data) === hoje);
   
   if (registros.length === 0) {
     showToast('Nenhum registro encontrado hoje.', 'warning');
@@ -340,22 +314,6 @@ function gerarPDFExpediente() {
   
   doc.save(`expediente_${hoje}.pdf`);
   showToast(`PDF do expediente gerado com ${registros.length} registros!`, 'success');
-}
-
-function agendarEnvioPDF() {
-  const agora = new Date();
-  const alvo = new Date();
-  alvo.setHours(17, 0, 0, 0);
-  
-  if (agora > alvo) {
-    alvo.setDate(alvo.getDate() + 1);
-  }
-  
-  const timeout = alvo - agora;
-  setTimeout(() => {
-    gerarPDFExpediente();
-    agendarEnvioPDF();
-  }, timeout);
 }
 
 function showToast(message, type = 'info') {
