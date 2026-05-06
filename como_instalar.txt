@@ -1,0 +1,37 @@
+COMO TRANSFORMAR EM APP NO CELULAR (PWA)
+
+PASSO 1 - No PC:
+1. Gere os ícones (veja arquivo ICONES.txt)
+2. Coloque "icon-192.png" e "icon-512.png" na pasta
+3. O sistema já está pronto como PWA
+
+PASSO 2 - Hospedagem (necessário para instalar como app):
+O Android/iOS exige que o site esteja online para instalar.
+
+OPÇÕES GRATUITAS:
+a) GitHub Pages (recomendado):
+   1. Crie conta em github.com
+   2. Crie repositório "ecoponto"
+   3. Faça upload de TODA a pasta D:\app\projeto
+   4. Vá em Settings > Pages > Source: main > Save
+   5. Seu app estará em: https://seunome.github.io/ecoponto/
+
+b) Netlify (mais fácil):
+   1. Acesse netlify.com
+   2. Arraste a pasta "projeto" para a página
+   3. Pronto! URL gerada automaticamente
+
+PASSO 3 - Instalar no Android (Chrome):
+1. Abra o link do app no Chrome
+2. Menu (3 pontos) > "Adicionar à tela inicial"
+3. Confirme o nome "Ecoponto"
+4. O ícone aparecerá como um app nativo!
+
+PASSO 4 - Instalar no iPhone (Safari):
+1. Abra o link no Safari
+2. Botão Compartilhar > "Adicionar à Tela de Início"
+3. Confirme e o app aparecerá na tela inicial
+
+PRONTO!
+O app funcionará em tela cheia, sem barra de endereços, igual um app nativo!
+Os dados continuam salvos no localStorage do navegador.

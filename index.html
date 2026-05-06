@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ecoponto - Controle de Entrada de Resíduos</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.1/jspdf.plugin.autotable.min.js"></script>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#2e7d32">
+  <link rel="icon" href="icon-192.png">
+</head>
+<body>
+  <div class="app-container">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <i class="fas fa-recycle"></i>
+        <h2>Ecoponto - Prefeitura de Catanduva</h2>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="#" class="nav-item active" data-page="dashboard">
+          <i class="fas fa-home"></i> <span>Dashboard</span>
+        </a>
+        <a href="#" class="nav-item" data-page="cadastro">
+          <i class="fas fa-plus-circle"></i> <span>Cadastro</span>
+        </a>
+        <a href="#" class="nav-item" data-page="historico">
+          <i class="fas fa-history"></i> <span>Histórico</span>
+        </a>
+        <a href="#" class="nav-item" data-page="relatorios">
+          <i class="fas fa-chart-bar"></i> <span>Relatórios</span>
+        </a>
+        <a href="#" class="nav-item" data-page="configuracoes">
+          <i class="fas fa-cog"></i> <span>Configurações</span>
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="theme-toggle" id="themeToggle">
+          <i class="fas fa-moon"></i> <span>Tema Escuro</span>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="top-bar">
+        <button class="menu-toggle" id="menuToggle">
+          <i class="fas fa-bars"></i>
+        </button>
+        <h1 id="pageTitle">Dashboard</h1>
+        <div class="user-info">
+          <i class="fas fa-user-circle"></i>
+        </div>
+      </header>
+
+      <div class="page-content">
+        <div id="dashboard" class="page active">
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-icon"><i class="fas fa-truck"></i></div>
+              <div class="stat-info">
+                <h3 id="totalVeiculos">0</h3>
+                <p>Veículos Hoje</p>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon"><i class="fas fa-leaf"></i></div>
+              <div class="stat-info">
+                <h3 id="totalResiduos">0</h3>
+                <p>Resíduos Cadastrados</p>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon"><i class="fas fa-calendar-day"></i></div>
+              <div class="stat-info">
+                <h3 id="dataHoje"></h3>
+                <p>Data Atual</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="quick-actions">
+            <h2>Ações Rápidas</h2>
+            <div class="actions-grid">
+              <button class="action-btn" onclick="navigateTo('cadastro')">
+                <i class="fas fa-plus"></i> Novo Registro
+              </button>
+              <button class="action-btn" onclick="navigateTo('historico')">
+                <i class="fas fa-list"></i> Ver Histórico
+              </button>
+              <button class="action-btn" onclick="navigateTo('relatorios')">
+                <i class="fas fa-file-alt"></i> Relatórios
+              </button>
+              <button class="action-btn" onclick="gerarPDFExpediente()" style="background:#e53935;">
+                <i class="fas fa-file-pdf"></i> Baixar PDF
+              </button>
+              <button class="action-btn" onclick="navigateTo('configuracoes')">
+                <i class="fas fa-cog"></i> Configurar
+              </button>
+            </div>
+          </div>
+
+          <div class="recent-records">
+            <h2>Últimos Registros</h2>
+            <div class="table-container">
+              <table class="data-table" id="ultimosRegistros">
+                <thead>
+                  <tr>
+                    <th>Horário</th>
+                    <th>Placa</th>
+                    <th>Modelo</th>
+                    <th>Responsável</th>
+                    <th>Resíduos</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td colspan="5" class="empty-state">Nenhum registro recente</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div id="cadastro" class="page">
+          <h2>Novo Registro de Entrada</h2>
+          <form id="cadastroForm" class="form-container">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="horario">Horário</label>
+                <input type="time" id="horario" required>
+              </div>
+              <div class="form-group">
+                <label for="data">Data</label>
+                <input type="date" id="data" required>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="placa">Placa</label>
+                <input type="text" id="placa" placeholder="ABC-1234" maxlength="8" style="text-transform:uppercase" required>
+              </div>
+              <div class="form-group">
+                <label for="modelo">Modelo do Veículo</label>
+                <input type="text" id="modelo" placeholder="Ex: Ford Cargo" required>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="responsavel">Nome do Responsável</label>
+                <input type="text" id="responsavel" placeholder="Nome completo" required>
+              </div>
+              <div class="form-group">
+                <label for="tipoVeiculo">Tipo de Veículo</label>
+                <select id="tipoVeiculo" required>
+                  <option value="">Selecione...</option>
+                  <option value="Caminhão">Caminhão</option>
+                  <option value="Utilitário">Utilitário</option>
+                  <option value="3/4">3/4</option>
+                  <option value="Carretinha">Carretinha</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group full-width">
+              <label>Tipo de Resíduo (Múltipla escolha)</label>
+              <div class="checkbox-group">
+                <label class="checkbox-label">
+                  <input type="checkbox" name="residuo" value="Galho"> Galho
+                </label>
+                <label class="checkbox-label">
+                  <input type="checkbox" name="residuo" value="Roçada"> Roçada
+                </label>
+                <label class="checkbox-label">
+                  <input type="checkbox" name="residuo" value="Entulho"> Entulho
+                </label>
+                <label class="checkbox-label">
+                  <input type="checkbox" name="residuo" value="Móveis"> Móveis
+                </label>
+                <label class="checkbox-label">
+                  <input type="checkbox" name="residuo" value="Madeira"> Madeira
+                </label>
+                <label class="checkbox-label">
+                  <input type="checkbox" name="residuo" value="Reciclagem"> Reciclagem
+                </label>
+              </div>
+            </div>
+
+            <div class="form-group full-width">
+              <label for="observacao">Observação</label>
+              <textarea id="observacao" rows="3" placeholder="Observações gerais..."></textarea>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Salvar Registro</button>
+              <button type="reset" class="btn-secondary"><i class="fas fa-eraser"></i> Limpar</button>
+            </div>
+          </form>
+        </div>
+
+        <div id="historico" class="page">
+          <div class="page-header">
+            <h2>Histórico de Registros</h2>
+            <div class="header-actions">
+              <button class="btn-secondary" onclick="exportarExcel()"><i class="fas fa-file-excel"></i> Excel</button>
+              <button class="btn-secondary" onclick="exportarPDF()"><i class="fas fa-file-pdf"></i> PDF</button>
+            </div>
+          </div>
+
+          <div class="filters">
+            <div class="filter-group">
+              <label>Pesquisar por Placa</label>
+              <input type="text" id="filtroPlaca" placeholder="Digite a placa..." oninput="filtrarHistorico()">
+            </div>
+            <div class="filter-group">
+              <label>Filtrar por Data</label>
+              <input type="date" id="filtroData" onchange="filtrarHistorico()">
+            </div>
+            <div class="filter-group">
+              <label>Tipo de Veículo</label>
+              <select id="filtroVeiculo" onchange="filtrarHistorico()">
+                <option value="">Todos</option>
+                <option value="Caminhão">Caminhão</option>
+                <option value="Utilitário">Utilitário</option>
+                <option value="3/4">3/4</option>
+                <option value="Carretinha">Carretinha</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Tipo de Resíduo</label>
+              <select id="filtroResiduo" onchange="filtrarHistorico()">
+                <option value="">Todos</option>
+                <option value="Galho">Galho</option>
+                <option value="Roçada">Roçada</option>
+                <option value="Entulho">Entulho</option>
+                <option value="Móveis">Móveis</option>
+                <option value="Madeira">Madeira</option>
+                <option value="Reciclagem">Reciclagem</option>
+              </select>
+            </div>
+            <button class="btn-clear" onclick="limparFiltros()"><i class="fas fa-times"></i> Limpar Filtros</button>
+          </div>
+
+          <div class="table-container">
+            <table class="data-table" id="tabelaHistorico">
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Horário</th>
+                  <th>Placa</th>
+                  <th>Modelo</th>
+                  <th>Responsável</th>
+                  <th>Tipo Veículo</th>
+                  <th>Resíduos</th>
+                  <th>Obs.</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="historicoBody">
+                <tr><td colspan="9" class="empty-state">Nenhum registro encontrado</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="relatorios" class="page">
+          <h2>Relatórios</h2>
+          <div class="report-cards">
+            <div class="report-card" onclick="gerarRelatorio('diario')">
+              <i class="fas fa-calendar-day"></i>
+              <h3>Relatório Diário</h3>
+              <p>Registros de hoje</p>
+            </div>
+            <div class="report-card" onclick="gerarRelatorio('semanal')">
+              <i class="fas fa-calendar-week"></i>
+              <h3>Relatório Semanal</h3>
+              <p>Últimos 7 dias</p>
+            </div>
+            <div class="report-card" onclick="gerarRelatorio('mensal')">
+              <i class="fas fa-calendar-alt"></i>
+              <h3>Relatório Mensal</h3>
+              <p>Este mês</p>
+            </div>
+          </div>
+
+          <div id="relatorioResultado" class="relatorio-output" style="display:none;">
+            <div class="relatorio-header">
+              <h3 id="relatorioTitulo"></h3>
+              <div class="header-actions">
+                <button class="btn-secondary" onclick="exportarRelatorioExcel()"><i class="fas fa-file-excel"></i> Excel</button>
+                <button class="btn-secondary" onclick="exportarRelatorioPDF()"><i class="fas fa-file-pdf"></i> PDF</button>
+              </div>
+            </div>
+            <div class="table-container">
+              <table class="data-table" id="tabelaRelatorio">
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Horário</th>
+                    <th>Placa</th>
+                    <th>Modelo</th>
+                    <th>Responsável</th>
+                    <th>Tipo Veículo</th>
+                    <th>Resíduos</th>
+                  </tr>
+                </thead>
+                <tbody id="relatorioBody"></tbody>
+              </table>
+            </div>
+            <div class="relatorio-stats" id="relatorioStats"></div>
+          </div>
+        </div>
+
+        <div id="configuracoes" class="page">
+          <h2>Configurações</h2>
+
+          <div class="config-section">
+            <h3><i class="fas fa-palette"></i> Aparência</h3>
+            <div class="form-container">
+              <div class="form-group full-width">
+                <label>Tema Atual</label>
+                <div class="theme-options">
+                  <button class="theme-btn active" data-theme="light" onclick="setTheme('light')">
+                    <i class="fas fa-sun"></i> Claro
+                  </button>
+                  <button class="theme-btn" data-theme="dark" onclick="setTheme('dark')">
+                    <i class="fas fa-moon"></i> Escuro
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="config-section">
+            <h3><i class="fas fa-database"></i> Backup e Restauração</h3>
+            <div class="form-container">
+              <div class="backup-actions">
+                <button class="btn-primary" onclick="fazerBackup()">
+                  <i class="fas fa-download"></i> Fazer Backup (JSON)
+                </button>
+                <button class="btn-secondary" onclick="document.getElementById('restoreFile').click()">
+                  <i class="fas fa-upload"></i> Restaurar Backup
+                </button>
+                <input type="file" id="restoreFile" accept=".json" style="display:none" onchange="restaurarBackup(event)">
+              </div>
+              <div class="form-group full-width">
+                <label>Limpar Dados</label>
+                <button class="btn-danger" onclick="limparDados()">
+                  <i class="fas fa-trash"></i> Limpar Todos os Registros
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="js/storage.js"></script>
+  <script src="js/export.js"></script>
+  <script src="js/reports.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
