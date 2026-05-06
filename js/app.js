@@ -20,13 +20,13 @@ function normalizarData(dataStr) {
   return dataStr;
 }
 
-async function initApp() {
+function initApp() {
   setupNavigation();
   setupTheme();
   setupForm();
   setupConfig();
-  await updateDashboard();
-  await loadHistorico();
+  updateDashboard();
+  loadHistorico();
   
   const now = new Date();
   document.getElementById('data').value = getLocalDateString();
@@ -46,7 +46,7 @@ function setupNavigation() {
   const sidebar = document.getElementById('sidebar');
 
   navItems.forEach(item => {
-    item.addEventListener('click', async (e) => {
+    item.addEventListener('click', (e) => {
       e.preventDefault();
       const targetPage = item.dataset.page;
       
@@ -61,8 +61,8 @@ function setupNavigation() {
       
       sidebar.classList.remove('open');
 
-      if (targetPage === 'dashboard') await updateDashboard();
-      if (targetPage === 'historico') await loadHistorico();
+      if (targetPage === 'dashboard') updateDashboard();
+      if (targetPage === 'historico') loadHistorico();
     });
   });
 
@@ -104,7 +104,7 @@ function setTheme(theme) {
 function setupForm() {
   const form = document.getElementById('cadastroForm');
   
-  form.addEventListener('submit', async (e) => {
+  form.addEventListener('submit', (e) => {
     e.preventDefault();
     
     const residuos = Array.from(form.querySelectorAll('input[name="residuo"]:checked'))
@@ -127,26 +127,22 @@ function setupForm() {
     };
     
     record.data = getLocalDateString();
+    Storage.saveRecord(record);
+    showToast('Registro salvo com sucesso!', 'success');
     
-    const result = await Storage.saveRecord(record);
-    if (result) {
-      showToast('Registro salvo com sucesso!', 'success');
-      form.reset();
-      const now = new Date();
-      document.getElementById('data').value = getLocalDateString();
-      document.getElementById('horario').value = now.toTimeString().slice(0, 5);
-      
-      await updateDashboard();
-      await loadHistorico();
-      navigateTo('dashboard');
-    } else {
-      showToast('Erro ao salvar registro.', 'error');
-    }
+    form.reset();
+    const now = new Date();
+    document.getElementById('data').value = getLocalDateString();
+    document.getElementById('horario').value = now.toTimeString().slice(0, 5);
+    
+    updateDashboard();
+    loadHistorico();
+    navigateTo('dashboard');
   });
 }
 
-async function updateDashboard() {
-  const records = await Storage.getRecords();
+function updateDashboard() {
+  const records = Storage.getRecords();
   const hoje = getLocalDateString();
   const hojeRecords = records.filter(r => normalizarData(r.data) === hoje);
   
@@ -175,8 +171,8 @@ async function updateDashboard() {
   }
 }
 
-async function loadHistorico(filtered) {
-  const records = filtered || await Storage.getRecords();
+function loadHistorico(filtered) {
+  const records = filtered || Storage.getRecords();
   const tbody = document.getElementById('historicoBody');
   
   if (records.length === 0) {
@@ -184,7 +180,7 @@ async function loadHistorico(filtered) {
     return;
   }
   
-  tbody.innerHTML = records.map(r => `
+  tbody.innerHTML = records.reverse().map(r => `
     <tr>
       <td>${normalizarData(r.data)}</td>
       <td>${r.horario}</td>
@@ -195,7 +191,7 @@ async function loadHistorico(filtered) {
       <td>${r.residuos.join(', ')}</td>
       <td>${r.observacao || '-'}</td>
       <td class="action-icons">
-        <button onclick="deletarRegistro(${r.id})" class="delete" title="Excluir">
+        <button onclick="deletarRegistro('${r.id}')" class="delete" title="Excluir">
           <i class="fas fa-trash"></i>
         </button>
       </td>
@@ -203,19 +199,19 @@ async function loadHistorico(filtered) {
   `).join('');
 }
 
-async function filtrarHistorico() {
+function filtrarHistorico() {
   const placaFiltro = document.getElementById('filtroPlaca').value.toLowerCase();
   const dataFiltro = document.getElementById('filtroData').value;
   const veiculoFiltro = document.getElementById('filtroVeiculo').value;
   const residuoFiltro = document.getElementById('filtroResiduo').value;
   
-  let records = await Storage.getRecords();
+  let records = Storage.getRecords();
   
   if (placaFiltro) {
     records = records.filter(r => r.placa.toLowerCase().includes(placaFiltro));
   }
   if (dataFiltro) {
-    records = records.filter(r => normalizarData(r.data) === dataFiltro);
+    records = records.filter(r => r.data === dataFiltro);
   }
   if (veiculoFiltro) {
     records = records.filter(r => r.tipoVeiculo === veiculoFiltro);
@@ -224,7 +220,7 @@ async function filtrarHistorico() {
     records = records.filter(r => r.residuos.includes(residuoFiltro));
   }
   
-  await loadHistorico(records);
+  loadHistorico(records);
 }
 
 function limparFiltros() {
@@ -235,48 +231,49 @@ function limparFiltros() {
   loadHistorico();
 }
 
-async function deletarRegistro(id) {
+function deletarRegistro(id) {
   if (confirm('Tem certeza que deseja excluir este registro?')) {
-    await Storage.deleteRecord(id);
-    await updateDashboard();
-    await loadHistorico();
+    Storage.deleteRecord(id);
+    updateDashboard();
+    loadHistorico();
     showToast('Registro excluído.', 'success');
   }
 }
 
 function setupConfig() {}
 
-async function fazerBackup() {
-  await Storage.exportJSON();
+function fazerBackup() {
+  Storage.exportJSON();
   showToast('Backup realizado com sucesso!', 'success');
 }
 
-async function restaurarBackup(event) {
+function restaurarBackup(event) {
   const file = event.target.files[0];
   if (!file) return;
   
-  try {
-    await Storage.importJSON(file);
-    showToast('Backup restaurado com sucesso!', 'success');
-    await updateDashboard();
-    await loadHistorico();
-  } catch (e) {
-    showToast('Erro ao restaurar backup.', 'error');
-  }
+  Storage.importJSON(file)
+    .then(() => {
+      showToast('Backup restaurado com sucesso!', 'success');
+      updateDashboard();
+      loadHistorico();
+    })
+    .catch(() => {
+      showToast('Erro ao restaurar backup.', 'error');
+    });
 }
 
-async function limparDados() {
+function limparDados() {
   if (confirm('Tem certeza? Isso apagará TODOS os registros permanentemente.')) {
-    await Storage.clearAll();
-    await updateDashboard();
-    await loadHistorico();
+    Storage.clearAll();
+    updateDashboard();
+    loadHistorico();
     showToast('Todos os dados foram apagados.', 'success');
   }
 }
 
-async function gerarPDFExpediente() {
+function gerarPDFExpediente() {
   const hoje = getLocalDateString();
-  const registros = (await Storage.getRecords()).filter(r => normalizarData(r.data) === hoje);
+  const registros = Storage.getRecords().filter(r => normalizarData(r.data) === hoje);
   
   if (registros.length === 0) {
     showToast('Nenhum registro encontrado hoje.', 'warning');
